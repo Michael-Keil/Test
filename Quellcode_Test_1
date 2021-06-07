@@ -1,0 +1,146 @@
+/* Autor: Michael Keil (Matr. Nr. 201810396)
+* Datum: 20.12.2020
+* Aufgabe: Dieses Programm ist ein Lagesensor, der durch die Blinkgeschwindigkeit anzeigt, wie der Arduino Nano um die y-Achse geneigt ist.
+* Im neutralen Zustand blinkt die LED konstant 600 ms lang. Bei Neigung nach rechts wird das Blinken immer schneller, bis es in senkrechter Lage
+* alle 100 ms blinkt. Bei Neigung nach links blinkt die LED immer langsamer, bis sie im senkrechten Zustand dann alle 1100 ms blinkt.
+* Die Neigung lässt sich somit aus der Blinkfrequenz ablesen.
+* Die Farbe des Blinkens lässt sich über Eingaben in den Seriellen Monitor beeinflussen.
+* Es gilt:
+* 1 = Rot
+* 2 = Grün
+* 3 = Gelb
+* 4 = Blau
+* Es gilt immer die letzte Eingabe, auch bei Zeichenketten.
+* Dies ist nun Quellcode in einem GitHub Repository namens test.
+*/
+
+
+#include <Arduino_LSM9DS1.h>
+#include <Scheduler.h>
+
+int farbe;                                       // farbe wird als Übergabevariable festgelegt, um die Blinkfarbe einzustellen
+float x, y, z, LageAbweichung = 0.1, BlinkSpeed; // x, y, z entsprechen den Beschleunigungen in die jeweilige Richtung. LageAbweichung beschreibt den Totbereich des Lagesensors. 
+                                                 // Je kleiner LageAbweichung eingestellt wird, desto sensibler reagiert der Arduino auf Abweichungen aus der neutralen Lage.
+                                                 // BlinkSpeed wird als Übergabevariable zwischen der Funktion Lagesensor und dem Blinkvorgang verwendet, um die Delaylänge zu regulieren
+ 
+void setup() {
+  pinMode(LEDR, OUTPUT);            // definieren der LEDs als Ausgänge
+  pinMode(LEDB, OUTPUT);             
+  pinMode(LEDG, OUTPUT);            
+
+  Serial.begin(9600);
+  if (!IMU.begin()){
+    Serial.println("Lagemessung konnte nicht initialisiert werden!"); // Für den Fall, dass ein Sensor am Arduino defekt ist, kann man dies über den seriellen Monitor erkennen
+      
+    while (1);
+  }
+  farbe = 4;          // legt die Anfangsfarbe Blau fest
+     
+  Scheduler.startLoop(loop2);     //startet die beiden anderen Funktionen für den Scheduler
+  Scheduler.startLoop(loop3);   
+ 
+}
+
+void loop(){          //liest aus, bzw. vergleicht welche Farbe gewählt wurde und führt den Blinkvorgang durch.
+  if (farbe == 1){    
+    rotAn();
+    delay(BlinkSpeed);
+    allesAus();
+  }
+  else if (farbe == 2){
+    gruenAn();
+    delay(BlinkSpeed);  
+    allesAus();
+  }
+  else if (farbe == 3){
+    gelbAn();
+    delay(BlinkSpeed);
+    allesAus();
+  }
+  else if (farbe == 4){
+    blauAn();
+    delay(BlinkSpeed);
+    allesAus();
+  }
+ delay(100);
+ yield();        // Befehl zur Übergabe der Kontrolle
+} 
+
+void loop2() {      // Case Vergleich zum Auslesen der Farbanforderungen und Rückmeldung über den Seriellen Monitor.(Lies sich leider als eigene Funktion irgendwie nicht kompilieren, deshalb gesamte Funktion im Loop, sorry!) 
+  if (Serial.available()) {
+    int c = Serial.read();   // c als Auslesevariable lokal definiert.
+
+    switch (c) {
+
+      case'1': farbe = 1;
+               Serial.println("Blinkt rot!");
+               break; 
+
+      case'2': farbe = 2;
+               Serial.println("Blinkt grün!");
+               break; 
+                
+      case'3': farbe = 3;
+               Serial.println("Blinkt gelb!");
+               break;
+      case'4': farbe = 4;
+               Serial.println("Blinkt blau!");
+               break;
+    }
+  delay(100);
+ }
+}
+
+void loop3(){                             // liest die Werte des Beschleunigungssensors aus, wenn diese verfügbar sind und führt dann die Lagesensor Funktion aus.
+  if (IMU.accelerationAvailable())
+      {
+      IMU.readAcceleration(x, y, z);
+      Lagesensor();
+      }
+ yield();                                 // Befehl zur Übergabe der Kontrolle
+}
+
+
+// Lagesensor vergleicht die Beschleunigungswerte in x-Richtung und berechnet daraus dynamisch die Delayzeit und damit die Blinkgeschwindigkeit.
+// Diese wird dann über die Variable BlinkSpeed übergeben. Es gibt einen Totbereich um die neutrale Lage, welcher durch LageAbweichung definiert wird.
+
+void Lagesensor() {             
+  if (x <= LageAbweichung && x >= -LageAbweichung) //Board gerade
+    BlinkSpeed = 600;
+  else if (x > LageAbweichung) //Board nach links geneigt (relativ zum x-Wert langsamer blinken)
+    BlinkSpeed = (500*x)+600;
+  else if (x < -LageAbweichung) //Board nach rechts geneigt (relativ zum x-Wert schneller blinken)
+    BlinkSpeed = 500*(1+x)+100;
+}
+
+// Funktionen für die Farbeinstellungen der LED 
+
+void rotAn() {
+  digitalWrite(LEDR, LOW);
+  digitalWrite(LEDG, HIGH);
+  digitalWrite(LEDB, HIGH);  
+}
+
+void gelbAn() {
+  digitalWrite(LEDR, LOW);
+  digitalWrite(LEDG, LOW);
+  digitalWrite(LEDB, HIGH);  
+}
+
+void gruenAn() {
+  digitalWrite(LEDR, HIGH);
+  digitalWrite(LEDG, LOW);
+  digitalWrite(LEDB, HIGH);  
+}
+
+void blauAn() {
+  digitalWrite(LEDR, HIGH);
+  digitalWrite(LEDG, HIGH);
+  digitalWrite(LEDB, LOW);
+}
+
+void allesAus() {
+  digitalWrite(LEDR, HIGH);
+  digitalWrite(LEDG, HIGH);
+  digitalWrite(LEDB, HIGH);  
+}                 
