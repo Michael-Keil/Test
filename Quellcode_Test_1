@@ -66,30 +66,7 @@ void loop(){          //liest aus, bzw. vergleicht welche Farbe gewählt wurde u
  yield();        // Befehl zur Übergabe der Kontrolle
 } 
 
-void loop2() {      // Case Vergleich zum Auslesen der Farbanforderungen und Rückmeldung über den Seriellen Monitor.(Lies sich leider als eigene Funktion irgendwie nicht kompilieren, deshalb gesamte Funktion im Loop, sorry!) 
-  if (Serial.available()) {
-    int c = Serial.read();   // c als Auslesevariable lokal definiert.
 
-    switch (c) {
-
-      case'1': farbe = 1;
-               Serial.println("Blinkt rot!");
-               break; 
-
-      case'2': farbe = 2;
-               Serial.println("Blinkt grün!");
-               break; 
-                
-      case'3': farbe = 3;
-               Serial.println("Blinkt gelb!");
-               break;
-      case'4': farbe = 4;
-               Serial.println("Blinkt blau!");
-               break;
-    }
-  delay(100);
- }
-}
 
 void loop3(){                             // liest die Werte des Beschleunigungssensors aus, wenn diese verfügbar sind und führt dann die Lagesensor Funktion aus.
   if (IMU.accelerationAvailable())
